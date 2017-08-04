@@ -1,0 +1,239 @@
+---
+title: "Stat2017 (Part 1)"
+author: "Fu Xing"
+date: "`r Sys.setlocale('LC_TIME', 'en_US.UTF-8');format(Sys.time(), '%Y-%b-%d')`"
+output: 
+  ioslides_presentation:
+    logo: rapp.jpg
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = '', message = FALSE)
+options(digits = 3)
+```
+
+## Install the packages
+```{r eval=FALSE}
+install.packages('car')
+install.packages('effects')
+install.packages('gplots')
+install.packages('gvlma')
+install.packages('HH')
+install.packages('leaps')
+install.packages('MASS')
+install.packages('multcomp')
+install.packages('pastecs')
+install.packages('psych')
+install.packages('vcd')
+```
+
+## Contents
+- Descriptive statistics
+- Frequency and contingency tables
+- Correlations
+- t-tests
+- Nonparametric statistics
+- Regression
+- Analysis of variance
+
+## Descriptive statistics
+
+```{r}
+myvars <- c('mpg', 'hp', 'wt')
+summary(mtcars[myvars])
+```
+
+The **summary()** function provides the minimum, maximum, quartiles, and mean for numerical variables and frequencies for factors and logical vectors.
+
+***
+```{r}
+library(pastecs)
+myvars <- c('mpg', 'hp', 'wt')
+stat.desc(mtcars[myvars])
+```
+
+## *Descriptive statistics by group*
+```{r}
+myvars <- c('mpg', 'hp', 'wt')
+aggregate(mtcars[myvars], by=list(am=mtcars$am), mean)
+aggregate(mtcars[myvars], by=list(am=mtcars$am), sd)
+```
+***
+```{r}
+myvars <- c('mpg', 'hp', 'wt')
+by(mtcars[myvars], mtcars$am, summary)
+```
+
+## Frequency and contingency tables
+```{r}
+library(vcd)
+head(Arthritis)
+```
+
+## *ONE-WAY TABLES*
+```{r}
+mytable <- table(Arthritis$Improved)
+mytable
+prop.table(mytable)
+```
+
+## *TWO-WAY TABLES*
+```{r}
+mytable <- table(Arthritis$Treatment, Arthritis$Improved)
+mytable
+prop.table(mytable, 1)
+```
+
+## **MULTIDIMENSIONAL TABLES**
+```{r}
+mytable <- xtabs(~ Treatment+Improved+Sex, data = Arthritis)
+ftable(mytable)
+```
+
+## Tests of independence
+- Chi-square test
+- Fisher's exact test
+- Cochran-Mantel-Haenszel test
+
+## Chi-square test {.smaller}
+```{r}
+mytable <- xtabs(~Treatment+Improved, data=Arthritis)
+chisq.test(mytable)
+```
+
+```{r}
+mytable <- xtabs(~Improved+Sex, data=Arthritis)
+chisq.test(mytable)
+```
+
+## Fisher's exact test {.smaller}
+```{r}
+mytable <- xtabs(~Treatment+Improved, data=Arthritis)
+fisher.test(mytable)
+```
+
+```{r}
+mytable <- xtabs(~Improved+Sex, data=Arthritis)
+fisher.test(mytable)
+```
+
+## Cochran-Mantel-Haenszel test {.smaller}
+```{r}
+mytable <- xtabs(~Treatment+Improved+Sex, data=Arthritis)
+mantelhaen.test(mytable)
+```
+- The test assumes that there's no **three-way interaction** (*Treatment* and *Improved* variables are independent within each level for *Sex*). 
+- The results suggest that treatment received and the improvement reported aren't independent with each level of *Sex*.
+
+## Measures of association
+```{r}
+library(vcd)
+mytable <- xtabs(~Treatment+Improved, data=Arthritis)
+assocstats(mytable)
+```
+
+## Correlations
+- Correlation coefficients are used to describe relationships among quantitative variables. 
+- The sign indicates the direction of the relationship, and the magnitude indicates the strength of the relationship.
+
+## Types of correlations
+- **Pearson** correlation assesses the degree of **linear** relationship between two quantitative variables.
+- **Spearman** correlation assesses the degree of relationship between two rank-ordered variables.
+
+***
+```{r}
+states <- state.x77[, 1:6]
+head(states)
+```
+
+***
+```{r}
+cor(states, method = 'pearson')
+```
+
+***
+```{r}
+cor(states, method = 'spearman')
+```
+
+***
+*You cat get the relationships between one set of variables and another:*
+```{r}
+x <- states[, c('Population', 'Income', 'Illiteracy', 'HS Grad')]
+y <- states[,c('Life Exp', 'Murder')]
+cor(x, y)
+```
+
+## Testing correlations for significance {.smaller}
+The typical null hypothesis is no relationship (that is, the correlation in the population is 0).
+```{r}
+cor.test(states[,3], states[,5])
+```
+*You can test only one correlation at a time using cor.test()*
+
+## Testing correlations for significance {.smaller}
+```{r}
+library(psych)
+corr.test(states, use = 'complete', method = 'pearson')
+```
+
+## T-tests
+- A two-group **independent t-test** can be used to test the hypothesis that the two population means are equal. Here, you assume that the two groups are **independent** and that the data is sampled from **normal** populations.
+
+- When observations in the two groups are related, you have a dependent-groups design. A **dependent t-test** assumes that the **difference** between groups is **normally** distributed.
+
+- If you can assume that the data are **independently** sampled from **normal** populations, you can use analysis of variance (ANOVA).
+
+***
+```{r}
+library(MASS)
+head(UScrime)
+```
+
+***
+```{r}
+t.test(Prob ~ So, data=UScrime)
+```
+- The default test assumes unequal variance and applies the *Welsh degrees-of-freedom modification*.
+
+***
+```{r}
+with(UScrime, t.test(U1, U2, paired=TRUE))
+```
+
+## Nonparametric tests
+If you're unable to meet the parametric assumptions of a t-test or ANOVA, for example, if the outcome variables are severely skewed or ordinal in nature, you can turn to nonparametric approaches.
+
+## Comparing two groups
+If the two groups are independent, you can use the **Wilcoxon rank sum test (Mann-Whitney U test)** to assess whether the observations are sampled from the same probability distribution (that is, whether the probability of obtaining higher scores is greater in one population than the other).
+
+***
+```{r}
+wilcox.test(Prob ~ So, data=UScrime)
+```
+
+***
+```{r}
+with(UScrime, wilcox.test(U1, U2, paired = TRUE))
+```
+
+## Comparing more than two groups
+- If you can't meet the assumptions of ANOVA designs, you can use nonparametric methods to evaluate group differences.
+
+- If the groups are independent, a **Kruskal-Wallis** test provides a useful approach.
+
+- If the groups are dependent, the **Friedman test** is more approprate.
+
+***
+```{r}
+states <- data.frame(state.region, state.x77)
+kruskal.test(Illiteracy ~ state.region, data = state.x77)
+```
+- Although you can reject the null hypothesis of no difference, the test doesn't tell you **which** regions differ significantly from each other.
+
+- To answer this question, you could compare groups two at a time using the **Wilcoxon test**.
+
+***
+```{r, out.width = "500px", fig.align='center', echo=FALSE}
+knitr::include_graphics("qrcode.jpg")
+```

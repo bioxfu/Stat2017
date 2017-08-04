@@ -1,0 +1,357 @@
+---
+title: "Stat2017 (Part 2)"
+author: "Fu Xing"
+date: "`r Sys.setlocale('LC_TIME', 'en_US.UTF-8');format(Sys.time(), '%Y-%b-%d')`"
+output: 
+  ioslides_presentation:
+    logo: rapp.jpg
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = '', message = FALSE)
+options(digits = 3)
+```
+
+## What is regression?
+- It's a broad term for a set fo methodologies used to predict a **response** variable (also called a **dependent** or **outcome** variable) from one or more **predictor** variables (also called **independent** or **explanatory** variables).
+
+- In general, regression analysis can be used to **identifiy** the explanatory variables that are related to a response variable, to **describe** the form of the relationships involved, and to **provide** an equation for predicting the response variable from the explanatory variables.
+
+## We'll learn
+1. Fit and interpret regression models. 
+2. Identify potential problems with these models. 
+3. Variable selection. 
+4. Generalizability. 
+5. Relative importance.
+
+## Varieties of regression analysis
+Type of regression | Typical use
+------------------ | ---------------------------------
+Simpler linear | Predicting a quantitative response variable from a quantitative explanatory variable.
+Polynomial | Predicting a quantitative response variable from a quantitative explanatory variable, where the relationship is modeled as an *n* th order polynomial.
+Multiple linear | Predicting a quantitative response variable from two or more explanatory variables.
+Multilevel | Predicting a response variable from data that have a hierarchical structure (for example, students within classrooms within schools). Also called hierarchical, nested, or mixed models.
+
+## Varieties of regression analysis
+Type of regression | Typical use
+------------------ | ---------------------------------
+Multivariate | Predicting more than one response variable from one or more explanatory variables.
+Logistic | Predicting a categorical response variable from one or more explanatory variables.
+Poisson | Predicting a response variable representing counts from one or more explanatory variables.
+Cox proportional hazards | Predicting time to an event (death, failure, relapse) from one or more explanatory variables.
+
+## Varieties of regression analysis
+Type of regression | Typical use
+------------------ | ---------------------------------
+Time-series | Modeling time-series data with correlated errors.
+Nonlinear | Predicting a quantitative response variable from one or more explanatory variables, where the form of the model is nonlinear.
+Nonparametric | Predicting a quantitative response variable from one or more explanatory variables, where the form of the model is derived from the data and not specified a priori.
+Robust | Predicting a quantitative response variable from one or more explanatory variables using an approach that’s resistant to the effect of influential observations.
+
+## Varieties of regression analysis
+- We’ll focus on regression methods that fall under the rubric of ordinary least squares (OLS) regression, including **simple linear regression**, **polynomial regression**, and **multiple linear regression**. 
+
+- In OLS regression, a **quantitative** dependent variable is predicted from a **weighted sum** of predictor variables, where the weights are parameters estimated from the data.
+
+## Fitting regression models with lm()
+```{r eval=FALSE}
+myfit <- lm(formula, data)
+```
+- **formula** describes the model to be fit and **data** is the data frame containing the data to be used in fitting the model. 
+- The resulting object (**myfit**, in this case) is a *list* that contains extensive information about the fitted model. 
+
+## Symbols commonly used in R formulas
+Symbol | Usage
+------ | -------------------------------------------------------
+~ | Separates response variables on the left from the explanatory variables on the right. For example, a prediction of y from x, z, and w would be coded y ~ x + z + w.
++ | Separates predictor variables.
+: | Denotes an interaction between predictor variables. A prediction of y from x, z, and the interaction between x and z would be coded y ~ x + z + x:z.
+* | A shortcut for denoting all possible interactions. The code y ~ x * z * w expands to y ~ x + z + w + x:z + x:w + z:w + x:z:w.
+^ | Denotes interactions up to a specified degree. The code y ~ (x + z + w)^2 expands to y ~ x + z + w + x:z + x:w + z:w.
+
+## Symbols commonly used in R formulas
+Symbol | Usage
+------ | -------------------------------------------------------
+. | A placeholder for all other variables in the data frame except the dependent variable. For example, if a data frame contained the variables x, y, z, and w, then the code y ~ . would expand to y ~ x + z + w.
+- | A minus sign removes a variable from the equation. For example, y ~ (x + z + w)^2 – x:w expands to y ~ x + z + w + x:z + z:w.
+-1 | Suppresses the intercept. For example, the formula y ~ x -1 fits a regression of y on x, and forces the line through the origin at x=0.
+I() | Elements within the parentheses are interpreted arithmetically. For example, y ~ x + (z + w)^2 would expand to y ~ x + z + w + z:w. In contrast, the code y ~ x + I((z + w)^2) would expand to y ~ x + h, where h is a new variable created by squaring the sum of z and w.
+*function* | Mathematical functions can be used in formulas. For example, log(y) ~ x + z + w would predict log(y) from x, z, and w.
+
+## Useful functions
+Function | Action
+------ | -------------------------------------------------------
+summary() | Displays detailed results for the fitted model
+coefficients() | Lists the model parameters (intercept and slopes) for the fitted model
+confint() | Provides confidence intervals for the model parameters (95% by default)
+fitted() | Lists the predicted values in a fitted model
+residuals() | Lists the residual values in a fitted model
+
+## Useful functions
+Function | Action
+------ | -------------------------------------------------------
+anova() | Generates an ANOVA table for a fitted model, or an ANOVA table comparing two or more fitted models
+vcov() | Lists the covariance matrix for model parameters
+AIC() | Prints Akaike’s Information Criterion
+plot() | Generates diagnostic plots for evaluating the fit of a model
+predict() | Uses a fitted model to predict response values for a new dataset
+
+## Simple linear regression {.smaller}
+```{r}
+fit <- lm(weight ~ height, data=women)
+summary(fit)
+```
+
+***
+```{r}
+data.frame(weight = women$weight, 
+           fitted = fitted(fit),
+           residuals = residuals(fit))
+```
+
+***
+```{r}
+plot(women$height, women$weight,
+     xlab='Height (in inches)',
+     ylab='Weight (in inches)')
+abline(fit)
+```
+
+## Polynomial regression {.smaller}
+```{r}
+fit2 <- lm(weight ~ height + I(height^2), data=women)
+summary(fit2)
+```
+
+***
+```{r}
+plot(women$height, women$weight,
+     xlab='Height (in inches)',
+     ylab='Weight (in inches)')
+lines(women$height, fitted(fit2))
+```
+
+***
+```{r}
+library(car)
+scatterplot(weight ~ height, data=women, spread=FALSE, pch=19, 
+            smoother.args=list(lty=2), main='Women Age 30~39',
+            xlab='Height (inches)', ylab='Weight (lbs.)')
+```
+
+## Multiple linear regression {.smaller}
+A good first step in multiple regression is to examine the relationships among the variables two at a time.
+```{r}
+options(digits = 2)
+states <- as.data.frame(state.x77[, c("Murder", "Population", "Illiteracy", 
+                                      "Income", "Frost")])
+cor(states)
+```
+
+***
+```{r}
+library(car)
+scatterplotMatrix(states, spread=FALSE, smoother.args=list(lty=2),
+                  main="Scatter Plot Matrix")
+```
+
+## Fit the multiple regression model {.smaller}
+```{r}
+fit <- lm(Murder ~ Population + Illiteracy + Income + Frost, data=states)
+summary(fit)
+```
+
+## Multiple linear regression with interactions {.smaller}
+```{r}
+fit <- lm(mpg ~ hp + wt + hp:wt, data=mtcars)
+summary(fit)
+```
+
+***
+You can visualize interactions using the **effect()** function in the **effects** package.
+```{r}
+library(effects)
+plot(effect("hp:wt", fit), multiline=TRUE)
+```
+
+## Regression diagnostics
+- Normality
+- Independence of errors
+- Linearity
+- Homoscedasticity
+
+***
+```{r}
+fit <- lm(weight ~ height, data=women)
+par(mfrow=c(2,2))
+plot(fit)
+```
+
+## *Normality* 
+- If the dependent variable is normally distributed for a fixed set of predictor values, then the residual values should be normally distributed with a mean of 0. 
+- The **Normal Q-Q plot** is a probability plot of the standardized residuals against the values that would be expected under normality. 
+- If you’ve met the normality assumption, the points on this graph should fall on the straight 45-degree line. 
+- If they don’t, you’ve clearly violated the normality assumption.
+
+## *Independence*
+- You can’t tell if the dependent variable values are independent from these plots. 
+- You have to use your understanding of how the data was collected. 
+- There’s no a priori reason to believe that one woman’s weight influences another woman’s weight. 
+- If you found out that the data were sampled from families, you might have to adjust your assumption of independence.
+
+## *Linearity*
+- If the dependent variable is linearly related to the independent variables, there should be no systematic relationship between the residuals and the predicted (that is, fitted) values. 
+- In other words, the model should capture all the systematic variance present in the data, leaving nothing but random noise. 
+- In the **Residuals vs. Fitted graph**, you see clear evidence of a curved relationship, which suggests that you may want to add a quadratic term to the regression.
+
+## *Homoscedasticity*
+- If you’ve met the constant variance assumption, the points in the **Scale-Location graph** should be a random band around a horizontal line. You seem to meet this assumption.
+
+***
+```{r results='hide'}
+library(gvlma)
+gvmodel <- gvlma(fit)
+g <- summary(gvmodel)
+```
+```{r}
+g
+```
+
+## Outliers {.smaller}
+- Outliers are observations that aren’t predicted well by the model. They have unusually large positive or negative residuals.
+- A rough rule of thumb is that standardized residuals that are larger than 2 or less than –2 are worth attention.
+- The **outlierTest()** function reports the Bonferroni adjusted p-value for the **largest** absolute studentized residual:
+```{r}
+library(car)
+outlierTest(fit)
+```
+If it isn’t significant, there are no outliers in the dataset. If it’s significant, you must **delete** it and **rerun** the test to see if others are present.
+
+## Corrective measures
+There are four approaches to dealing with violations of regression assumptions:
+
+- Deleting observations
+- Transforming variables
+- Adding or deleting variables
+- Using another regression approach
+
+## Comparing models
+- You can compare the fit of two **nested models** using the **anova()** function in the base installation. 
+- A nested model is one whose terms are completely included in the other model. 
+- In the states multiple-regression model, you found that the regression coefficients for *Income* and *Frost* were nonsignificant. 
+- You can test whether a model without these two variables predicts as well as one that includes them.
+
+***
+```{r}
+states <- as.data.frame(state.x77[,c("Murder", "Population",
+                                     "Illiteracy", "Income", "Frost")])
+fit1 <- lm(Murder ~ Population + Illiteracy + Income + Frost, data=states)
+fit2 <- lm(Murder ~ Population + Illiteracy, data=states)
+anova(fit2, fit1)
+```
+- Because the test is nonsignificant, you conclude that they don’t add to the linear prediction and you’re justified in dropping them from your model.
+
+***
+- The Akaike Information Criterion (AIC) provides another method for comparing models. 
+- Models with smaller AIC values are preferred.
+```{r}
+states <- as.data.frame(state.x77[,c("Murder", "Population",
+                                     "Illiteracy", "Income", "Frost")])
+fit1 <- lm(Murder ~ Population + Illiteracy + Income + Frost, data=states)
+fit2 <- lm(Murder ~ Population + Illiteracy, data=states)
+AIC(fit2, fit1)
+```
+- Note that although the ANOVA approach requires nested models, the AIC approach doesn’t.
+
+## Variable selection {.smaller}
+- All subsets regression is performed using the **regsubsets()** function from the **leaps** package. 
+- You can choose the R-squared, Adjusted R-squared, or Mallows Cp statistic as your criterion for reporting “best” models. 
+- It has been widely suggested that a good model is one in which the Cp statistic is close to the number of model parameters (including the intercept).
+```{r eval=FALSE}
+library(leaps)
+states <- as.data.frame(state.x77[,c("Murder", "Population",
+                                     "Illiteracy", "Income", "Frost")])
+leaps <-regsubsets(Murder ~ Population + Illiteracy + Income + Frost, data=states, nbest=4)
+library(car)
+subsets(leaps, statistic="cp", main="Cp Plot for All Subsets Regression", legend = 'topright')
+abline(1,1,lty=2,col="red")
+```
+
+***
+```{r echo=FALSE}
+library(leaps)
+states <- as.data.frame(state.x77[,c("Murder", "Population",
+                                     "Illiteracy", "Income", "Frost")])
+leaps <-regsubsets(Murder ~ Population + Illiteracy + Income + Frost, data=states, nbest=4)
+library(car)
+subsets(leaps, statistic="cp", main="Cp Plot for All Subsets Regression", legend = 'topright')
+abline(1,1,lty=2,col="red")
+```
+
+- Better models will fall close to a (red) line with intercept 1 and slope 1.
+
+## Cross-validation
+- Cross-validation is a useful method for evaluating the generalizability of a regression equation.
+
+- In *k-fold cross-validation*, the sample is divided into *k* subsamples. Each of the *k* subsamples serves as a hold-out group, and the combined observations from the remaining *k* – 1 subsamples serve as the training group. 
+
+- The performance for the *k* prediction equations applied to the *k* hold-out samples is recorded and then averaged. 
+
+- When *k* equals *n*, the total number of observations, this approach is called *jackknifing*.
+
+## Cross-validation {.smaller}
+- You can perform k-fold cross-validation using the **crossval()** function in the **bootstrap** package. 
+- The following listing provides a function (called shrinkage() ) for cross-validating a model’s R-square statistic using k-fold cross-validation.
+```{r}
+shrinkage <- function(fit, k=10){
+  require(bootstrap)
+  theta.fit <- function(x,y){lsfit(x,y)}
+  theta.predict <- function(fit,x){cbind(1,x)%*%fit$coef}
+  x <- fit$model[,2:ncol(fit$model)]
+  y <- fit$model[,1]
+  results <- crossval(x, y, theta.fit, theta.predict, ngroup=k)
+  r2 <- cor(y, fit$fitted.values)^2
+  r2cv <- cor(y, results$cv.fit)^2
+  cat("Original R-square =", r2, "\n")
+  cat(k, "Fold Cross-Validated R-square =", r2cv, "\n")
+  cat("Change =", r2-r2cv, "\n")
+}
+```
+
+***
+```{r}
+states <- as.data.frame(state.x77[,c("Murder", "Population",
+                                     "Illiteracy", "Income", "Frost")])
+fit <- lm(Murder ~ Population + Income + Illiteracy + Frost, data=states)
+shrinkage(fit)
+```
+
+```{r}
+fit2 <- lm(Murder ~ Population + Illiteracy,data=states)
+shrinkage(fit2)
+```
+
+## Relative importance {.smaller}
+- There have been many attempts to develop a means for assessing the relative importance of predictors. The simplest has been to compare standardized regression coefficients. 
+- Standardized regression coefficients describe the expected change in the response variable (expressed in standard deviation units) for a standard deviation change in a predictor variable, holding the other predictor variables constant.
+```{r}
+states <- as.data.frame(state.x77[,c("Murder", "Population",
+                                     "Illiteracy", "Income", "Frost")])
+zstates <- as.data.frame(scale(states))
+zfit <- lm(Murder~Population + Income + Illiteracy + Frost, data=zstates)
+coef(zfit)
+```
+
+## Summary {.smaller}
+- Regression analysis is a process with many parts. 
+- We’ve discussed fitting OLS regression models, using regression diagnostics to assess the data’s fit to statistical assumptions, and methods for modifying the data to meet these assumptions more closely. 
+- We looked at ways of selecting a final regression model from many possible models, and you learned how to evaluate its likely performance on new samples of data. 
+- Finally, we tackled the thorny problem of variable importance: identifying which variables are the most important for predicting an outcome.
+- In each of the examples, the predictor variables have been quantitative. However, there are no restrictions against using categorical variables as predictors as well. 
+- Using a categorical predictor such as gender, treatment type, or manufacturing process allows you to examine group differences on a response or outcome variable. This is the focus of our next part: ANOVA.
+
+***
+```{r, out.width = "500px", fig.align='center', echo=FALSE}
+knitr::include_graphics("qrcode.jpg")
+```
+

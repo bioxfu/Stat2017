@@ -1,0 +1,210 @@
+---
+title: "Stat2017 (Part 3)"
+author: "Fu Xing"
+date: "`r Sys.setlocale('LC_TIME', 'en_US.UTF-8');format(Sys.time(), '%Y-%b-%d')`"
+output: 
+  ioslides_presentation:
+    logo: rapp.jpg
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = '', message = FALSE)
+options(digits = 3)
+```
+
+## Analysis of variance
+- Regression models predict a quantitative response variable from quantitative predictor variables.
+- When factors are included as explanatory variables, our focus usually shifts from prediction to understanding group differences, and the methodology is referred to as analysis of variance (ANOVA) .
+
+## aov() {.smaller}
+**aov(*formula*, data=*dataframe*)**
+
+Design | Formula
+------------------------ | --------------------------
+One-way ANOVA | y ~ A
+One-way ANCOVA with 1 covariate | y ~ x + A
+Two-way factorial ANOVA | y ~ A * B
+Two-way factorial ANCOVA with 2 covariates | y ~ x1 + x2 + A * B
+Randomized block | y ~ B + A (where B is a blocking factor)
+One-way within-groups ANOVA | y ~ A + Error(Subject/A)
+Repeated measures ANOVA with 1 within-groups factor (W) and 1 between-groups factor (B) | y ~ B * W + Error(Subject/W)
+
+## One-way ANOVA {.smaller}
+In a one-way ANOVA , you’re interested in comparing the dependent variable means of two or more groups defined by a categorical grouping factor.
+```{r}
+library(multcomp)
+attach(cholesterol)
+table(trt)
+head(response)
+```
+
+***
+```{r}
+aggregate(response, by=list(trt), FUN=mean)
+aggregate(response, by=list(trt), FUN=sd)
+```
+
+***
+```{r}
+fit <- aov(response ~ trt)
+summary(fit)
+```
+
+***
+```{r}
+library(gplots)
+plotmeans(response ~ trt, xlab="Treatment", ylab="Response",
+          main="Mean Plot\nwith 95% CI")
+```
+
+```{r echo=FALSE}
+detach(cholesterol)
+```
+
+## *Multiple comparisons* {.smaller}
+The ANOVA F test for treatment tells you that the five drug regimens aren’t equally effective, but it doesn’t tell you which treatments differ from one another. You can use **TukeyHSD()** function to test all pairwise differences between group means.
+```{r}
+TukeyHSD(fit)
+```
+
+## Assessing the normality assumption {.smaller}
+```{r}
+library(car)
+qqPlot(lm(response ~ trt, data=cholesterol), simulate=TRUE, main="Q-Q Plot", labels=FALSE)
+```
+
+## Assessing equality of variances {.smaller}
+```{r}
+bartlett.test(response ~ trt, data=cholesterol)
+```
+Bartlett’s test indicates that the variances in the five groups don’t differ significantly.
+
+## Test for outliers
+```{r}
+library(car)
+outlierTest(fit)
+```
+
+## One-way ANCOVA {.smaller}
+A one-way analysis of covariance (ANCOVA) extends the one-way ANOVA to include one or more quantitative covariates.
+```{r}
+data(litter, package="multcomp")
+attach(litter)
+table(dose)
+```
+
+```{r}
+head(weight)
+```
+
+```{r}
+head(gesttime)
+```
+
+***
+```{r}
+aggregate(weight, by=list(dose), FUN=mean)
+```
+
+```{r}
+aggregate(weight, by=list(dose), FUN=sd)
+```
+
+***
+```{r}
+fit <- aov(weight ~ gesttime + dose)
+summary(fit)
+```
+- The ANCOVA F tests indicate that (a) gestation time was related to birth weight, and (b) drug dosage was related to birth weight after controlling for gestation time. 
+- The mean birth weight isn’t the same for each of the drug dosages, after controlling for gestation time.
+
+***
+Because you’re using a covariate, you may want to obtain adjusted group means — that is, the group means obtained after partialing out the effects of the covariate.
+```{r}
+library(effects)
+effect("dose", fit)
+```
+
+***
+- As with the one-way ANOVA example, the F test for dose indicates that the treatments don’t have the same mean birth weight, but it doesn’t tell you which means differ from one another. 
+- You can use the multiple comparison procedures provided by the multcomp package to compute all pairwise mean comparisons.
+```{r}
+library(multcomp)
+contrast <- rbind("no drug vs. drug" = c(3, -1, -1, -1))
+```
+- The contrast c(3, -1, -1, -1) specifies a comparison of the first group with the average of the other three.
+
+***
+```{r}
+summary(glht(fit, linfct=mcp(dose=contrast)))
+```
+
+## Assessing test assumptions
+ANCOVA designs make the same normality and homogeneity of variance assumptions described for ANOVA designs, and you can test these assumptions using the same procedures described above.
+
+## Two-way factorial ANOVA {.smaller}
+In a two-way factorial ANOVA, subjects are assigned to groups that are formed from the cross-classification of two factors.
+```{r}
+attach(ToothGrowth)
+head(supp)
+```
+
+```{r}
+head(dose)
+```
+
+```{r}
+table(supp, dose)
+```
+
+***
+```{r}
+aggregate(len, by=list(supp, dose), FUN=mean)
+```
+
+```{r}
+aggregate(len, by=list(supp, dose), FUN=sd)
+```
+
+***
+```{r}
+dose <- factor(dose)
+fit <- aov(len ~ supp*dose)
+summary(fit)
+```
+
+The ANOVA table indicates that both main effects (*supp* and *dose*) and the interaction between these factors are significant.
+
+***
+```{r}
+library(HH)
+interaction2wt(len~supp*dose)
+```
+
+## Repeated measures ANOVA
+In repeated measures ANOVA, subjects are measured more than once. We focuses on a repeated measures ANOVA with one within-groups and one between-groups factor (a common design).
+```{r}
+CO2$conc <- factor(CO2$conc)
+w1b1 <- subset(CO2, Treatment=='chilled')
+head(w1b1)
+```
+
+***
+```{r}
+fit <- aov(uptake ~ conc*Type + Error(Plant/(conc)), w1b1)
+summary(fit)
+```
+
+***
+```{r}
+par(las=2)
+par(mar=c(10,4,4,2))
+with(w1b1, interaction.plot(conc, Type, uptake, type="b", 
+                            col=c("red","blue"), pch=c(16,18),
+                            main="Interaction Plot for Plant Type and Concentration"))
+```
+
+***
+```{r, out.width = "500px", fig.align='center', echo=FALSE}
+knitr::include_graphics("qrcode.jpg")
+```
